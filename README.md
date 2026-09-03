@@ -1,123 +1,111 @@
-# Video Chat Backend
+# CallChat — WebRTC calling + minimal chat
 
-FastAPI + Redis + Cloudflare TURN — WebRTC signaling server.
+A minimal calling app: register with a user ID, call another registered
+user by their ID (voice or video), and exchange short chat messages —
+like a phone dialer with SMS. All calls/messages are logged per-user in
+a database, not just kept in browser memory.
 
-## Architecture
+- **Backend**: Python + FastAPI, managed with `uv`. Handles auth, user
+  lookup, call/message history, and WebRTC **signaling** over a
+  WebSocket (it never touches the actual audio/video — that's peer-to-peer).
+- **Frontend**: React (Vite) + Bootstrap. Builds into `backend/webapp/`,
+  so in production it's all one process/one port.
+
+## Project layout
 
 ```
-Browser A                      Backend (FastAPI)                    Browser B
-   │                                  │                                  │
-   │  POST /api/rooms  ───────────►   │  create_room (Redis)             │
-   │  ◄──── { room_id, peer_id }      │                                  │
-   │                                  │                                  │
-   │  WS /ws/{room_id}/{peer_idA} ──► │  register WS                     │
-   │  ◄── room-state (peers=[])       │                                  │
-   │                                  │                                  │
-   │                         POST /api/rooms/{id}/join  ◄───────────────│
-   │                                  │  ◄── { peer_id: B }              │
-   │                                  │                                  │
-   │                                  │  WS /ws/{room_id}/{peer_idB} ◄── │
-   │  ◄── peer-joined (B)             │  ◄── room-state (peers=[A])  ──► │
-   │                                  │                                  │
-   │  {type:"offer", to:B, sdp} ────► │  relay to B  ────────────────► │
-   │                            ◄──── │  ◄── {type:"answer", to:A}       │
-   │  ◄── answer from B               │                                  │
-   │  ICE candidates ◄──────────────► │ ◄──────────────────────────────► │
-   │                                  │                                  │
-   │◄═══════════════ P2P video/audio (direct, bypasses server) ═════════►│
+/backend         FastAPI app (uv-managed)
+  /app
+    main.py       entrypoint, mounts routes + serves the built frontend
+    config.py     secrets, DB path, ICE server list
+    db.py         SQLModel engine/session
+    models.py     User, Call, Message tables
+    auth.py       password hashing + JWT
+    routes/       REST: users, calls, messages
+    ws/           WebSocket signaling + connection manager
+  /webapp         <- built frontend lands here (generated, don't edit by hand)
+/frontend         React app (Vite)
+  /src
+    api/          REST client
+    ws/           WebSocket context (global connection, pub/sub)
+    call/         Call state machine (wires signaling + WebRTC together)
+    webrtc/       RTCPeerConnection wrapper
+    pages/        Login, Register, Dialer, CallScreen, Chat
+    components/   Navbar, IncomingCallModal
 ```
 
-## Quick Start
+## Running it (development)
+
+Two processes, so hot-reload works on both sides.
+
+**Backend:**
+```bash
+cd backend
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open the Vite dev URL it prints (usually `http://localhost:5173`). The
+dev server proxies `/api` and `/ws` to the backend on port 8000
+(see `frontend/vite.config.js`), so there's no CORS hassle.
+
+Open two browser windows (or one normal + one incognito) and register
+two different user IDs to test calling between them.
+
+## Running it (production-style, single process)
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Copy env and fill in values
-cp .env.example .env
-# Edit .env with your Cloudflare + Redis credentials
-
-# 3. Start Redis (if local)
-docker run -d -p 6379:6379 redis:7-alpine
-
-# 4. Run the server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# 5. Open API docs
-open http://localhost:8000/docs
+cd frontend
+npm install
+npm run build          # outputs into ../backend/webapp
+cd ../backend
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+Now `http://localhost:8000` serves the whole app — API, WebSocket, and
+the built React frontend — from one FastAPI process.
 
-## Environment Variables
+## Important: you need a TURN server for real-world use
 
-| Variable | Required | Description |
-|---|---|---|
-| `CF_ACCOUNT_ID` | No* | Cloudflare Account ID |
-| `CF_TURN_TOKEN` | No* | Cloudflare Calls API token |
-| `CF_TURN_TTL` | No | TURN credential TTL (default 86400s) |
-| `REDIS_URL` | Yes | Redis connection URL |
-| `ROOM_MAX_PEERS` | No | Max peers per room (default 10) |
-| `SESSION_TTL` | No | Room session TTL in seconds (default 3600) |
+The app ships with only a public STUN server
+(`stun:stun.l.google.com:19302`), which is enough for two browsers on
+open networks. **Across most real networks (behind NAT/firewalls,
+mobile carriers, corporate networks), calls will fail to connect media
+without a TURN server.** Run something like
+[coturn](https://github.com/coturn/coturn) and add its URL/credentials
+to `ICE_SERVERS` in `backend/app/config.py`.
 
-*Without CF credentials the server falls back to Google public STUN servers.
+## How calling works (signaling flow)
 
-## Cloudflare TURN Setup
+1. User A looks up User B's ID, clicks call → app opens/reuses a
+   WebSocket and sends `call:invite`.
+2. If B is online and free, the server relays the invite to B and B
+   sees an incoming-call modal (rings) no matter which page they're on.
+3. B accepts → server relays `call:accept` to A.
+4. A creates a `RTCPeerConnection`, grabs mic/camera, creates an SDP
+   offer, sends it as `webrtc:offer`.
+5. B receives the offer, creates its own peer connection + answer,
+   sends `webrtc:answer`.
+6. Both sides trade `webrtc:ice` candidates as they're discovered.
+7. Once ICE connects, audio/video flows directly between browsers (or
+   via TURN relay) — the backend is never in the media path.
+8. Either side can `call:hangup`; the call is logged with its outcome
+   (`completed` / `missed` / `rejected` / `cancelled`) in the database.
 
-1. Go to Cloudflare Dashboard → **Calls** → **TURN**
-2. Create a new TURN key
-3. Copy the **Key ID** → set as `CF_TURN_TOKEN`
-4. Copy your **Account ID** → set as `CF_ACCOUNT_ID`
+Chat messages go over the same WebSocket (`chat:message`) and are
+persisted to the database immediately, with a REST fallback
+(`POST /api/messages`) if the socket happens to be down.
 
-## API Reference
+## Known simplifications (minimal by design)
 
-### REST
-
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/rooms` | Create room (returns peer_id for host) |
-| GET | `/api/rooms/{id}` | Get room info |
-| POST | `/api/rooms/{id}/join` | Join room (returns peer_id) |
-| GET | `/api/rooms/{id}/peers` | List peers in room |
-| DELETE | `/api/rooms/{id}/peers/{pid}` | Leave room (REST) |
-| GET | `/api/turn-credentials` | Get fresh ICE server list |
-| GET | `/health` | Health check |
-
-### WebSocket
-
-Connect: `ws://host/ws/{room_id}/{peer_id}`
-
-**Send:**
-```json
-{ "type": "offer",         "to": "<peer_id>", "payload": { "sdp": "..." } }
-{ "type": "answer",        "to": "<peer_id>", "payload": { "sdp": "..." } }
-{ "type": "ice-candidate", "to": "<peer_id>", "payload": { "candidate": "..." } }
-{ "type": "ping" }
-{ "type": "leave" }
-```
-
-**Receive:**
-```json
-{ "type": "room-state",   "peers": [...], "mode": "room" }
-{ "type": "peer-joined",  "peer_id": "...", "display_name": "..." }
-{ "type": "peer-left",    "peer_id": "..." }
-{ "type": "offer",        "from": "...", "payload": { "sdp": "..." } }
-{ "type": "answer",       "from": "...", "payload": { "sdp": "..." } }
-{ "type": "ice-candidate","from": "...", "payload": { "candidate": "..." } }
-{ "type": "pong" }
-{ "type": "error",        "message": "..." }
-```
-
-## File Structure
-
-```
-videochat/
-├── main.py           # FastAPI app, lifespan, CORS
-├── config.py         # Settings via pydantic-settings + .env
-├── models.py         # Pydantic request/response models
-├── redis_client.py   # Redis helpers (rooms, peers, signal queues)
-├── turn_service.py   # Cloudflare TURN credential fetcher
-├── ws_manager.py     # WebSocket connection manager + relay
-├── routes_room.py    # REST room endpoints
-├── routes_ws.py      # WebSocket signaling endpoint
-├── requirements.txt
-└── .env.example
-```
+- One active session per user (opening a second tab disconnects the first).
+- No push notifications — a user only gets a call/message live if their
+  tab is open and the WebSocket is connected.
+- No group calls or group chat — one-to-one only.
+- No read receipts beyond `delivered`.
+- Passwords hashed with PBKDF2-SHA256 (stdlib only, no native deps) —
+  fine for a minimal app, but consider `argon2`/`bcrypt` for production.
