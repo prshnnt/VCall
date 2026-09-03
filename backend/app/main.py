@@ -50,3 +50,8 @@ if WEBAPP_DIR.exists():
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(WEBAPP_DIR / "index.html")
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
