@@ -24,6 +24,17 @@ class Call(SQLModel, table=True):
     ended_at: Optional[datetime] = None
 
 
+class PushSubscription(SQLModel, table=True):
+    """One row per browser/device the user has enabled notifications on.
+    A single user_id can have several (phone + laptop, etc)."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    endpoint: str = Field(unique=True, index=True)
+    p256dh: str
+    auth: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Message(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     sender_id: str = Field(index=True)

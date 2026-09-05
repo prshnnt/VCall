@@ -23,6 +23,11 @@ DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{DB_PATH}")
 # --- Static frontend ---
 WEBAPP_DIR = BASE_DIR / "webapp"
 
+# --- Web Push (VAPID) ---
+# Contact address delivered to push services in the signed claim; some
+# push providers use it to reach you if your server is misbehaving.
+VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "admin@example.com")
+
 # --- WebRTC ICE servers sent to the frontend ---
 # Public STUN works for dev. For production behind NAT/firewalls you MUST
 # run/point to a TURN server (e.g. coturn) or many calls will simply fail

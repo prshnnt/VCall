@@ -1,9 +1,9 @@
-.env
 # Python
 __pycache__/
 *.pyc
 .venv/
 backend/data.db
+backend/vapid_private_key.pem
 
 # Node
 node_modules/
@@ -12,7 +12,12 @@ frontend/dist/
 # Built frontend inside backend (regenerate with npm run build)
 backend/webapp/assets/
 backend/webapp/index.html
+backend/webapp/manifest.webmanifest
+backend/webapp/sw.js
+backend/webapp/sw.js.map
+backend/webapp/sw.mjs
 
 # Editors / OS
 .DS_Store
 .vscode/
+.env

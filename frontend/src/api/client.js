@@ -56,4 +56,7 @@ export const api = {
   threads: () => request('/messages/threads'),
   thread: (peerId) => request(`/messages/${encodeURIComponent(peerId)}`),
   sendMessage: (to, body) => request('/messages', { method: 'POST', body: { to, body } }),
+  pushPublicKey: () => request('/push/public-key'),
+  pushSubscribe: (subscription) => request('/push/subscribe', { method: 'POST', body: subscription }),
+  pushUnsubscribe: (endpoint) => request('/push/unsubscribe', { method: 'POST', body: { endpoint } }),
 };

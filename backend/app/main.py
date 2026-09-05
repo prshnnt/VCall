@@ -7,7 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.config import WEBAPP_DIR
 from app.db import init_db
-from app.routes import calls, messages, users
+from app.routes import calls, messages, push, users
 from app.ws import signaling
 
 
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(calls.router)
 app.include_router(messages.router)
+app.include_router(push.router)
 app.include_router(signaling.router)
 
 
@@ -50,8 +51,3 @@ if WEBAPP_DIR.exists():
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(WEBAPP_DIR / "index.html")
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
