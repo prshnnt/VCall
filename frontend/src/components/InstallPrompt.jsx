@@ -22,8 +22,6 @@ export default function InstallPrompt() {
     }
     window.addEventListener('beforeinstallprompt', handler);
 
-    // iOS Safari never fires beforeinstallprompt -- fall back to a
-    // one-time hint pointing at the native Share sheet.
     if (isIOS()) setShowIosHelp(true);
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -44,24 +42,27 @@ export default function InstallPrompt() {
   if (dismissed || isStandalone() || (!deferredPrompt && !showIosHelp)) return null;
 
   return (
-    <div className="alert alert-primary d-flex justify-content-between align-items-center mb-0 rounded-0 py-2">
-      <div>
-        {deferredPrompt ? (
-          <>📲 Install CallChat for quick access and call notifications.</>
-        ) : (
-          <>
-            📲 Install CallChat: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.
-          </>
-        )}
+    <div className="install-banner">
+      <div className="d-flex align-items-center gap-2">
+        <span style={{ fontSize: 18 }}>📲</span>
+        <div style={{ fontSize: 13, color: 'var(--text-main)' }}>
+          {deferredPrompt ? (
+            <>Install <strong>CallChat</strong> for instant call notifications.</>
+          ) : (
+            <>
+              Install <strong>CallChat</strong>: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.
+            </>
+          )}
+        </div>
       </div>
-      <div className="d-flex gap-2">
+      <div className="d-flex gap-2 align-items-center">
         {deferredPrompt && (
-          <button className="btn btn-sm btn-primary" onClick={handleInstallClick}>
+          <button className="touch-btn touch-btn-primary px-3 py-1" style={{ fontSize: 12 }} onClick={handleInstallClick}>
             Install
           </button>
         )}
-        <button className="btn btn-sm btn-outline-secondary" onClick={dismiss}>
-          Not now
+        <button className="btn btn-sm text-muted p-1 border-0" onClick={dismiss} title="Dismiss">
+          ✕
         </button>
       </div>
     </div>

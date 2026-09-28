@@ -2,8 +2,6 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCall } from '../call/CallContext';
 
-// Generates a simple two-tone ringtone with the Web Audio API so we don't
-// need to ship/host an audio file.
 function useRingtone(active) {
   const ctxRef = useRef(null);
   const stopRef = useRef(null);
@@ -52,23 +50,26 @@ export default function IncomingCallModal() {
   }
 
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-      style={{ background: 'rgba(0,0,0,0.6)', zIndex: 1050 }}
-    >
-      <div className="card shadow-lg" style={{ width: 340 }}>
-        <div className="card-body text-center p-4">
-          <div style={{ fontSize: 48 }}>{call.callType === 'video' ? '🎥' : '📞'}</div>
-          <h5 className="mt-2">{call.peer}</h5>
-          <p className="text-muted">Incoming {call.callType} call…</p>
-          <div className="d-flex gap-2 justify-content-center mt-3">
-            <button className="btn btn-danger" onClick={rejectIncoming}>
-              Decline
-            </button>
-            <button className="btn btn-success" onClick={handleAccept}>
-              Accept
-            </button>
-          </div>
+    <div className="incoming-modal-backdrop">
+      <div className="glass-panel p-4 p-sm-5 text-center shadow-lg" style={{ width: '100%', maxWidth: 360 }}>
+        {/* Animated Caller Avatar */}
+        <div className="pulsing-call-avatar mb-3">
+          {call.peer ? call.peer.charAt(0).toUpperCase() : '📞'}
+        </div>
+
+        <h4 className="fw-bold mb-1">{call.peer}</h4>
+        <p className="text-muted small mb-4">
+          Incoming {call.callType === 'video' ? '🎥 Video' : '🎙️ Voice'} Call…
+        </p>
+
+        {/* Action Buttons */}
+        <div className="d-flex gap-3 justify-content-center">
+          <button className="touch-btn touch-btn-danger flex-fill py-3" style={{ fontSize: 16 }} onClick={rejectIncoming}>
+            📴 Decline
+          </button>
+          <button className="touch-btn touch-btn-success flex-fill py-3" style={{ fontSize: 16 }} onClick={handleAccept}>
+            📞 Accept
+          </button>
         </div>
       </div>
     </div>

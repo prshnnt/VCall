@@ -8,6 +8,7 @@ export default function CallScreen() {
   const remoteVideoRef = useRef(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(call.callType === 'video');
+  const [durationSec, setDurationSec] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,75 +23,108 @@ export default function CallScreen() {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
   }, [remoteStream]);
 
+  // Call timer when active
+  useEffect(() => {
+    if (call.status !== 'active') return;
+    const interval = setInterval(() => {
+      setDurationSec((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [call.status]);
+
   if (call.status === 'idle') return null;
 
   const isVideo = call.callType === 'video';
   const isRinging = call.status === 'outgoing-ringing';
 
-  return (
-    <div className="container py-4 text-center" style={{ maxWidth: 720 }}>
-      <h4>
-        {isRinging ? 'Calling…' : 'On call with'} <strong>{call.peer}</strong>
-      </h4>
-      <p className="text-muted">{isVideo ? 'Video call' : 'Voice call'}</p>
+  function formatTime(sec) {
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
 
-      <div className="position-relative bg-dark rounded mb-3 d-flex align-items-center justify-content-center" style={{ minHeight: 360 }}>
+  return (
+    <div className="call-overlay">
+      {/* Top Info Bar */}
+      <div className="text-center py-2">
+        <h3 className="fw-bold mb-1">{call.peer}</h3>
+        <div className="badge bg-dark bg-opacity-75 text-light px-3 py-1 rounded-pill" style={{ border: '1px solid var(--border-light)' }}>
+          {isRinging ? 'Ringing…' : isVideo ? `Video Call • ${formatTime(durationSec)}` : `Audio Call • ${formatTime(durationSec)}`}
+        </div>
+      </div>
+
+      {/* Main Stream Area */}
+      <div className="video-container my-3">
         {isVideo ? (
           <>
             <video
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              className="w-100 rounded"
-              style={{ maxHeight: 420, background: '#111' }}
+              className="video-remote"
             />
+            {/* Picture in Picture Local Video */}
             <video
               ref={localVideoRef}
               autoPlay
               playsInline
               muted
-              className="position-absolute bottom-0 end-0 m-2 rounded border border-light"
-              style={{ width: 140 }}
+              className="video-pip"
             />
           </>
         ) : (
-          <div className="text-light">
-            <div style={{ fontSize: 64 }}>🎙️</div>
-            <p>{isRinging ? 'Ringing…' : 'Audio connected'}</p>
-            {/* Hidden audio elements still need to be attached for audio-only calls */}
+          <div className="text-center my-auto p-4">
+            <div className="pulsing-call-avatar">
+              {call.peer ? call.peer.charAt(0).toUpperCase() : '📞'}
+            </div>
+            <h5 className="fw-bold text-light mb-1">{call.peer}</h5>
+            <p className="text-muted small">{isRinging ? 'Waiting for answer…' : 'Connected'}</p>
+            {/* Hidden audio element binding */}
             <audio ref={remoteVideoRef} autoPlay />
             <audio ref={localVideoRef} autoPlay muted />
           </div>
         )}
       </div>
 
-      <div className="d-flex justify-content-center gap-3">
+      {/* Floating Call Action Controls Bar */}
+      <div className="d-flex align-items-center justify-content-center gap-4 py-2">
         {call.status === 'active' && (
           <>
+            {/* Mic Toggle Button */}
             <button
-              className={`btn ${micOn ? 'btn-outline-secondary' : 'btn-secondary'}`}
+              className={`call-control-btn call-control-btn-secondary ${!micOn ? 'active' : ''}`}
               onClick={() => {
                 setMicOn((v) => !v);
                 toggleAudio(!micOn);
               }}
+              title={micOn ? 'Mute Microphone' : 'Unmute Microphone'}
             >
-              {micOn ? '🎙️ Mute' : '🔇 Unmute'}
+              {micOn ? '🎙️' : '🔇'}
             </button>
+
+            {/* Camera Toggle Button (Video call only) */}
             {isVideo && (
               <button
-                className={`btn ${camOn ? 'btn-outline-secondary' : 'btn-secondary'}`}
+                className={`call-control-btn call-control-btn-secondary ${!camOn ? 'active' : ''}`}
                 onClick={() => {
                   setCamOn((v) => !v);
                   toggleVideo(!camOn);
                 }}
+                title={camOn ? 'Turn off camera' : 'Turn on camera'}
               >
-                {camOn ? '🎥 Camera off' : '📷 Camera on'}
+                {camOn ? '🎥' : '📷'}
               </button>
             )}
           </>
         )}
-        <button className="btn btn-danger" onClick={isRinging ? cancelOutgoing : hangup}>
-          {isRinging ? 'Cancel' : '📴 Hang up'}
+
+        {/* Hangup / Cancel Call Button */}
+        <button
+          className="call-control-btn call-control-btn-danger"
+          onClick={isRinging ? cancelOutgoing : hangup}
+          title={isRinging ? 'Cancel Call' : 'Hang up'}
+        >
+          📴
         </button>
       </div>
     </div>
