@@ -26,21 +26,17 @@ def verify_password(password: str, password_hash: str, salt: str) -> bool:
     return computed == password_hash
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, temporary: bool = False) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
-    payload = {"sub": user_id, "exp": expire}
+    payload = {"sub": user_id, "exp": expire, "temp": temporary}
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-
-def decode_token(token: str) -> str:
+def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-    return user_id
+    return payload
 
 
 def get_current_user(
@@ -49,7 +45,10 @@ def get_current_user(
 ) -> User:
     if credentials is None:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
-    user_id = decode_token(credentials.credentials)
+    payload = decode_token(credentials.credentials)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User no longer exists")
