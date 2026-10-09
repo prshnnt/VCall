@@ -21,3 +21,4 @@ backend/webapp/sw.mjs
 .DS_Store
 .vscode/
 .env
+.opencode

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
+import uvicorn
 
 from app.config import WEBAPP_DIR
 from app.db import init_db
@@ -51,3 +52,6 @@ if WEBAPP_DIR.exists():
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(WEBAPP_DIR / "index.html")
+
+if __name__ == "__main__":
+    uvicorn.run(app=app,host='0.0.0.0',port=8000)
