@@ -5,7 +5,6 @@ import { api, saveSession } from '../api/client';
 export default function Register({ onLoggedIn }) {
   const [userId, setUserId] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -15,7 +14,7 @@ export default function Register({ onLoggedIn }) {
     setError('');
     setLoading(true);
     try {
-      const data = await api.register(userId.trim(), password, displayName.trim() || userId.trim());
+      const data = await api.claimUserId(userId.trim());
       saveSession(data.token, { user_id: data.user_id, display_name: data.display_name });
       onLoggedIn({ user_id: data.user_id, display_name: data.display_name });
       navigate('/');
@@ -29,7 +28,6 @@ export default function Register({ onLoggedIn }) {
   return (
     <div className="d-flex justify-content-center align-items-center px-3 py-4" style={{ minHeight: '100dvh' }}>
       <div className="glass-panel p-4 p-sm-5" style={{ width: '100%', maxWidth: 420 }}>
-        {/* Brand Icon Header */}
         <div className="text-center mb-4">
           <div className="d-inline-flex align-items-center justify-content-center p-3 rounded-circle mb-3" style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,8 +37,8 @@ export default function Register({ onLoggedIn }) {
               <line x1="23" y1="11" x2="17" y2="11"></line>
             </svg>
           </div>
-          <h2 className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>Create Account</h2>
-          <p className="text-muted small">Join CallChat for free calling and messaging</p>
+          <h2 className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>Claim Your ID</h2>
+          <p className="text-muted small">Choose a unique ID that friends can use to call you</p>
         </div>
 
         {error && (
@@ -51,11 +49,11 @@ export default function Register({ onLoggedIn }) {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label small fw-semibold text-muted">User ID</label>
+          <div className="mb-4">
+            <label className="form-label small fw-semibold text-muted">Call ID / Number</label>
             <input
               className="form-control modern-input"
-              placeholder="e.g. alex99"
+              placeholder="e.g. alex99 or 12345"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               autoCapitalize="none"
@@ -64,42 +62,12 @@ export default function Register({ onLoggedIn }) {
               required
             />
             <div className="form-text text-muted small mt-1" style={{ fontSize: 11 }}>
-              This unique ID is what friends will use to call you.
+              This ID is permanent and public. Choose wisely.
             </div>
           </div>
 
-          <div className="mb-3">
-            <label className="form-label small fw-semibold text-muted">Display Name (Optional)</label>
-            <input
-              className="form-control modern-input"
-              placeholder="e.g. Alex Morgan"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="form-label small fw-semibold text-muted">Password</label>
-            <input
-              type="password"
-              className="form-control modern-input"
-              placeholder="At least 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
-              required
-            />
-          </div>
-
           <button className="touch-btn touch-btn-primary w-100 py-3 mb-3" style={{ fontSize: 16 }} disabled={loading}>
-            {loading ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Creating account…
-              </>
-            ) : (
-              'Create account'
-            )}
+            {loading ? 'Claiming ID...' : 'Confirm & Enter App'}
           </button>
         </form>
 
