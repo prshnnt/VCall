@@ -9,9 +9,9 @@ import IncomingCallModal from './components/IncomingCallModal';
 import InstallPrompt from './components/InstallPrompt';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dialer from './pages/Dialer';
-import CallScreen from './pages/CallScreen';
-import Chat from './pages/Chat';
+import CallLogs from './pages/CallLogs';
+import Contacts from './pages/Contacts';
+import Profile from './pages/Profile';
 
 function RequireAuth({ user, children }) {
   if (!user) return <Navigate to="/login" replace />;
@@ -40,55 +40,67 @@ function useNotificationClicks() {
 
 export default function App() {
   const [user, setUser] = useState(getStoredUser());
+  const [activeTab, setActiveTab] = useState('dialpad');
+  const [hasNotification, setHasNotification] = useState(true);
   const loggedIn = Boolean(user && getToken());
 
   useNotificationClicks();
 
-  // Ask for notification permission once, right after login, so incoming
-  // calls/messages can reach the user even when the tab/app isn't focused.
-  // If they dismiss the browser's permission prompt, nothing breaks - the
-  // app still works fully via the live WebSocket while it's open.
   useEffect(() => {
     if (loggedIn && pushSupported() && Notification.permission === 'default') {
       enablePushNotifications().catch(() => {});
     }
   }, [loggedIn]);
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'dialpad': return <Dialer />;
+      case 'chats': return <Chat />;
+      case 'logs': return <CallLogs />;
+      case 'contacts': return <Contacts />;
+      case 'profile': return <Profile />;
+      default: return <Dialer />;
+    }
+  };
+
   return (
     <SignalingProvider loggedIn={loggedIn}>
       <CallProvider>
-        {loggedIn && <AppNavbar user={user} onLogout={() => setUser(null)} />}
-        {loggedIn && <InstallPrompt />}
-        {loggedIn && <IncomingCallModal />}
-        <Routes>
-          <Route path="/login" element={loggedIn ? <Navigate to="/" replace /> : <Login onLoggedIn={setUser} />} />
-          <Route path="/register" element={loggedIn ? <Navigate to="/" replace /> : <Register onLoggedIn={setUser} />} />
-          <Route
-            path="/"
-            element={
-              <RequireAuth user={loggedIn}>
-                <Dialer />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/call"
-            element={
-              <RequireAuth user={loggedIn}>
-                <CallScreen />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/chats"
-            element={
-              <RequireAuth user={loggedIn}>
-                <Chat />
-              </RequireAuth>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <div className="min-h-screen bg-[#0a0a0c] flex justify-center">
+          <div className="w-full max-w-md relative min-h-screen bg-[#0a0a0c] shadow-2xl">
+            {loggedIn && <InstallPrompt />}
+            {loggedIn && <IncomingCallModal />}
+            
+            <main className="pb-24">
+              <Routes>
+                <Route path="/login" element={loggedIn ? <Navigate to="/" replace /> : <Login onLoggedIn={setUser} />} />
+                <Route path="/register" element={loggedIn ? <Navigate to="/" replace /> : <Register onLoggedIn={setUser} />} />
+                <Route 
+                  path="/" 
+                  element={
+                    <RequireAuth user={loggedIn}>
+                      {renderTabContent()}
+                    </RequireAuth>
+                  } 
+                />
+                <Route path="/call" element={<RequireAuth user={loggedIn}><CallScreen /></RequireAuth>} />
+                <Route path="/chats" element={<RequireAuth user={loggedIn}><Chat /></RequireAuth>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
+
+            {loggedIn && (
+              <BottomNav 
+                activeTab={activeTab} 
+                setActiveTab={(tab) => {
+                  setActiveTab(tab);
+                  if (tab === 'chats') setHasNotification(false);
+                }} 
+                hasNotification={hasNotification}
+              />
+            )}
+          </div>
+        </div>
       </CallProvider>
     </SignalingProvider>
   );
