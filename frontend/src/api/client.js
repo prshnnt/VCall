@@ -46,10 +46,10 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 }
 
 export const api = {
-  register: (user_id, password, display_name) =>
-    request('/register', { method: 'POST', body: { user_id, password, display_name }, auth: false }),
-  login: (user_id, password) =>
-    request('/login', { method: 'POST', body: { user_id, password }, auth: false }),
+  authGoogle: (token, display_name) =>
+    request('/auth/google', { method: 'POST', body: { token, display_name }, auth: false }),
+  claimUserId: (user_id) =>
+    request('/auth/claim-id', { method: 'POST', body: { user_id } }),
   me: () => request('/users/me'),
   lookupUser: (user_id) => request(`/users/${encodeURIComponent(user_id)}`),
   callHistory: () => request('/calls/history'),
@@ -59,4 +59,12 @@ export const api = {
   pushPublicKey: () => request('/push/public-key'),
   pushSubscribe: (subscription) => request('/push/subscribe', { method: 'POST', body: subscription }),
   pushUnsubscribe: (endpoint) => request('/push/unsubscribe', { method: 'POST', body: { endpoint } }),
+  
+  // Contacts API
+  addContact: (contact_user_id, contact_name) => 
+    request('/contacts', { method: 'POST', body: { contact_user_id, contact_name } }),
+  getContacts: () => request('/contacts'),
+  removeContact: (contact_user_id) => 
+    request(`/contacts/${encodeURIComponent(contact_user_id)}`, { method: 'DELETE' }),
 };
+
