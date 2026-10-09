@@ -5,12 +5,19 @@ from sqlmodel import Field, SQLModel
 
 
 class User(SQLModel, table=True):
-    # user_id is the human-chosen handle people call each other by,
-    # e.g. "priya123". It doubles as the primary key.
+    # user_id is the human-chosen handle people call each other by.
+    # It is the primary key.
     user_id: str = Field(primary_key=True, index=True)
+    google_id: str = Field(unique=True, index=True)
     display_name: str
-    password_hash: str
-    salt: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Contact(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    owner_id: str = Field(index=True)  # The user who owns the contact list
+    contact_user_id: str = Field(index=True) # The handle of the saved contact
+    contact_name: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
