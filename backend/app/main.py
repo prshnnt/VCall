@@ -54,4 +54,4 @@ if WEBAPP_DIR.exists():
         return FileResponse(WEBAPP_DIR / "index.html")
 
 if __name__ == "__main__":
-    uvicorn.run(app=app,host='0.0.0.0',port=8000)
+    uvicorn.run(app=app,host='localhost',port=8000)
